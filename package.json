@@ -1,0 +1,19 @@
+{
+  "name": "einein",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "collections": "^5.1.12",
+    "discord.js": "^12.5.1",
+    "dotenv": "^8.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./src/bot.js",
+    "refresh": "nodemon ./src/bot.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
