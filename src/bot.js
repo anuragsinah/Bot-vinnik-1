@@ -21,7 +21,7 @@ client.on('message', (message) => {
         message.channel.send(startMessage);
         moves.clear();
         userVoted.clear();
-        
+
     } else if(message.content === "!stop") {
         //console.log(moves);
         ctr = (ctr+1)%2;
@@ -43,7 +43,7 @@ client.on('message', (message) => {
         valueSet = "No moves!"
         valueSet="**"+valueSet+"**";
         message.channel.send(valueSet);
-        
+
     } else {
         console.log(message.member.roles.cache.some(r=>[colorMap[ctr]].includes(r.name))+" : Ctr is : "+ctr);
         var words= message.content.split(" ");
@@ -61,11 +61,11 @@ client.on('message', (message) => {
                     moves.set(move,moves.get(move)+1);
                 }
             } else {
-                message.reply("you have already voted! :)");
+                message.reply("you have already voted this the move! :)");
             }
         }
     }
-       
+
     }
 })
 
