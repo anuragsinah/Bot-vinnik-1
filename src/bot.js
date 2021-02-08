@@ -72,20 +72,20 @@ function isValidMove(move){
 
 function sendMessageWithBoard(message,messageText){
   imageGenerator.loadFEN(chess.fen())
-  imageGenerator.generatePNG('chess.png')
-  setTimeout(() => { images("puzzle.png")                     //Load image from file
+  imageGenerator.generatePNG('../chess.png')
+  setTimeout(() => { images("../puzzle.png")                     //Load image from file
                                           //加载图像文件
       //.size(520)                          //Geometric scaling the image to 400 pixels width
                                           //等比缩放图像到400像素宽
-      .draw(images("chess.png"), 29, 29)   //Drawn logo at coordinates (10,10)
+      .draw(images("../chess.png"), 29, 29)   //Drawn logo at coordinates (10,10)
                                           //在(10,10)处绘制Logo
-      .save("output.png", {               //Save the image to a file,whih quality 50
+      .save("../output.png", {               //Save the image to a file,whih quality 50
           quality : 100                    //保存图片到文件,图片质量为50
       });
   }, 1000);
   setTimeout(() => { return message.channel.send( messageText, {
         files: [
-            "output.png"
+            "../output.png"
         ]
     });
   }, 1000);
@@ -144,8 +144,8 @@ client.on('message', (message) => {
      const PREFIX = '';
      let args = message.content.substring(PREFIX.length).split(" ");
      args[0] = args[0].toLowerCase();
-
-     if(args[0] === '!startgame'){
+     console.log(args[0]);
+     if(args[0] === 'c.startgame' || args[0] === 'c.sg'){
        if(isArbiter(message)){
          if(!gameInProgress){
            chess.reset()
@@ -162,7 +162,7 @@ client.on('message', (message) => {
          message.react("❌")
        }
      }
-     else if (args[0] === '!stopgame') {
+     else if (args[0] === 'c.endgame' || args[0] === 'c.eg') {
        if(isArbiter(message)){
          if(gameInProgress){
            message.channel.send('Are you sure you want to stop the game? React on this message with ✅ to continue.')
@@ -176,7 +176,7 @@ client.on('message', (message) => {
          message.react("❌")
        }
      }
-     else if (args[0] === '!undo') {
+     else if (args[0] === 'c.undo' || args[0] === 'c.u') {
        if(isArbiter(message)){
          if(gameInProgress){
            chess.undo()
@@ -192,7 +192,7 @@ client.on('message', (message) => {
          message.react("❌")
        }
      }
-     else if (args[0] === '!forcemove') {
+     else if (args[0] === 'c.forcemove' || args[0] === 'c.fm') {
        if(isArbiter(message)){
          if(gameInProgress){
            move = chess.move(args[1])
@@ -220,7 +220,7 @@ client.on('message', (message) => {
          message.react("❌")
        }
      }
-     else if (args[0] === '!stopvote') {
+     else if (args[0] === 'c.stopvote' || args[0] === 'c.sv') {
        if(isArbiter(message)){
        if(gameInProgress){
           const sorted = new Map([...movesCount.entries()].sort((a, b) => b[1] - a[1]));
@@ -272,7 +272,7 @@ client.on('message', (message) => {
         message.react("❌")
       }
      }
-     else if (args[0] === '!v') {
+     else if (args[0] === 'c.vote' || args[0] === 'c.v') {
        if(gameInProgress){
          var currentTurn = chess.turn()
          if(currentTurn === 'b'){
@@ -325,7 +325,7 @@ client.on('message', (message) => {
          message.reply(gameNotInProgressMessage);
        }
      }
-     else if (args[0] === '!history') {
+     else if (args[0] === 'c.history' || args[0] === 'c.h') {
        if(gameInProgress){
          if(chess.pgn().length==0){
            message.reply("No moves has been made till now");
@@ -338,7 +338,7 @@ client.on('message', (message) => {
          message.reply(gameNotInProgressMessage);
        }
      }
-     else if (args[0] === '!votecount') {
+     else if (args[0] === 'c.votecount' || args[0] === 'c.vc') {
        if(gameInProgress){
          console.log(movesCount);
          const sorted = new Map([...movesCount.entries()].sort((a, b) => b[1] - a[1]));
@@ -364,7 +364,7 @@ client.on('message', (message) => {
        }
      }
 
-     else if (args[0] === '!showboard') {
+     else if (args[0] === 'c.showboard' || args[0] === 'c.sb') {
        if(gameInProgress){
          return sendMessageWithBoard(message,'')
        }
