@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "main": "index.js",
   "dependencies": {
+    "chess-image-generator": "^1.0.9",
+    "chess.js": "^0.11.0",
     "collections": "^5.1.12",
     "discord.js": "^12.5.1",
-    "dotenv": "^8.2.0"
+    "dotenv": "^8.2.0",
+    "images": "^3.2.3"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo \"Error: no est specified\" && exit 1",
     "start": "node ./src/bot.js",
     "refresh": "nodemon ./src/bot.js"
   },
