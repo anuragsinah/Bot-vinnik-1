@@ -1,17 +1,14 @@
 require('dotenv').config();
 
 const { Client } = require('discord.js')
-var ChessImageGenerator = require('chess-image-generator');
 const client = new Client();
 var movesCount = new Map();
 var userVoted = new Map();
-const { Chess } = require('chess.js')
-var images = require("images");
+const { Chess } = require('chess.js');
 
 const chess = new Chess()
-var imageGenerator = new ChessImageGenerator({size: 480});
 
-var gameInProgress = false
+var gameInProgress = false;
 
 client.on('ready', () => {
     console.log("Login successful");
@@ -71,24 +68,38 @@ function isValidMove(move){
 }
 
 function sendMessageWithBoard(message,messageText){
-  imageGenerator.loadFEN(chess.fen())
-  imageGenerator.generatePNG('../chess.png')
-  setTimeout(() => { images("../puzzle.png")                     //Load image from file
-                                          //加载图像文件
-      //.size(520)                          //Geometric scaling the image to 400 pixels width
-                                          //等比缩放图像到400像素宽
-      .draw(images("../chess.png"), 29, 29)   //Drawn logo at coordinates (10,10)
-                                          //在(10,10)处绘制Logo
-      .save("../output.png", {               //Save the image to a file,whih quality 50
-          quality : 100                    //保存图片到文件,图片质量为50
-      });
-  }, 1000);
-  setTimeout(() => { return message.channel.send( messageText, {
-        files: [
-            "../output.png"
-        ]
+  // imageGenerator.loadFEN(chess.fen())
+  // imageGenerator.generatePNG('../chess.png')
+  // setTimeout(() => { images("../puzzle.png")                     //Load image from file
+  //                                         //加载图像文件
+  //     //.size(520)                          //Geometric scaling the image to 400 pixels width
+  //                                         //等比缩放图像到400像素宽
+  //     .draw(images("../chess.png"), 29, 29)   //Drawn logo at coordinates (10,10)
+  //                                         //在(10,10)处绘制Logo
+  //     .save("../output.png", {               //Save the image to a file,whih quality 50
+  //         quality : 100                    //保存图片到文件,图片质量为50
+  //     });
+  // }, 1000);
+  // setTimeout(() => { return message.channel.send( messageText, {
+  //       files: [
+  //           "../output.png"
+  //       ]
+  //   });
+  // }, 1000);
+  var imageURL;
+  var turn = chess.turn()
+  if(chess.turn() == 'b'){
+    imageURL = "https://chessboardimage.com/"+chess.fen()+"-flip.png";
+  }
+  else{
+    imageURL = "https://chessboardimage.com/"+chess.fen()+".png"
+  }
+  console.log(imageURL);
+  return  message.channel.send(messageText, {
+    files: [
+      imageURL
+    ]
     });
-  }, 1000);
 }
 
 function isGameOver(){
@@ -155,7 +166,7 @@ client.on('message', (message) => {
            return sendMessageWithBoard(message,startGameMessage);
          }
          else{
-           message.channel.send('Game is already in progress. Please stop the game first by using ```!stopgame```')
+           message.channel.send('Game is already in progress. Please stop the game first by using ```c.eg```')
          }
        }
        else{
@@ -169,7 +180,7 @@ client.on('message', (message) => {
            stoppingArbiterID = message.author.id;
          }
          else{
-            message.channel.send('No game in progress. Please start the game first by using ```!startgame```')
+            message.channel.send('No game in progress. Please start the game first by using ```c.sg```')
          }
        }
        else{
