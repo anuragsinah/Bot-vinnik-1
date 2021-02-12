@@ -1,6 +1,7 @@
 require('dotenv').config();
 
-const { Client } = require('discord.js')
+const { Client } = require('discord.js');
+const admin=require('firebase-admin');
 const client = new Client();
 var movesCount = new Map();
 var userVoted = new Map();
@@ -10,9 +11,68 @@ const chess = new Chess()
 
 var gameInProgress = false;
 
+var serviceAccount = {
+  "type": "service_account",
+  "project_id": process.env.project_id,
+  "private_key_id": process.env.private_key_id,
+  "private_key": process.env.private_key.replace(/\\n/g, '\n'),
+  "client_email": process.env.client_email,
+  "client_id": process.env.client_id,
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": process.env.client_x509_cert_url
+};
+
+var userPermissionApp = admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+let db = userPermissionApp.firestore();
+
 client.on('ready', () => {
     console.log("Login successful");
+     getCollection();
 });
+
+async function getCollection(){
+	console.log('startSnapshortUser');
+  var snapshot  = await	db.collection('chessBot').get();
+ snapshot.forEach(doc => {
+   if(doc.id == 'pgn'){
+     if(doc.data()['pgn'] != ''){
+       chess.reset();
+       gameInProgress = true;
+       var pgn = [doc.data()['pgn']];
+       chess.load_pgn(pgn.join('\n'));
+       if(isGameOver()){
+         gameInProgress = false;
+       }
+     }
+   }
+   else if (doc.id == 'chess') {
+     userVoted = new Map(Object.entries(doc.data()['userVoted']))
+     movesCount = new Map(Object.entries(doc.data()['movesCount']))
+   }
+ });
+}
+
+async function updateDataToFirebase(){
+  try{
+    userVotedObj = Object.fromEntries(userVoted);
+    movesCountObj =  Object.fromEntries(movesCount);
+    console.log("updateDataToFirebase");
+    var obj = {pgn : chess.pgn()}
+    console.log(obj);
+    await db.collection('chessBot').doc('pgn').set(obj, { merge: true })
+    await db.collection('chessBot').doc('chess').set({ userVoted: userVotedObj, movesCount: movesCountObj }, { merge: true });
+    console.log("updateDataToFirebase done");
+  }
+	catch(err){
+    console.error(err);
+  }
+}
+
 const startGameMessage="hey, get started with the moves!";
 const stopGameMessage="The current game has been stopped by an Arbiter!";
 const wrongMoveMessage = "Wrong move. Please use SAN notation"
@@ -41,8 +101,9 @@ function isArbiter (message) {
 }
 
 function countVote(message,move){
-  if(userVoted.get(message.author) === undefined){
-    userVoted.set(message.author,1);
+  if(userVoted.get(message.author.id) === undefined){
+    userVoted.set(message.author.id,1);
+    console.log(userVoted);
     if(movesCount.get(move) === undefined){
       movesCount.set(move,1);
       return true;
@@ -137,6 +198,7 @@ client.on('message', (message) => {
                movesCount.clear();
                userVoted.clear();
                gameInProgress = false;
+               updateDataToFirebase();
                message.channel.send(stopGameMessage);
                message.react('👍')
             }
@@ -163,6 +225,7 @@ client.on('message', (message) => {
            movesCount.clear();
            userVoted.clear();
            gameInProgress = true;
+           updateDataToFirebase();
            return sendMessageWithBoard(message,startGameMessage);
          }
          else{
@@ -193,6 +256,7 @@ client.on('message', (message) => {
            chess.undo()
            movesCount.clear();
            userVoted.clear();
+           updateDataToFirebase();
            return sendMessageWithBoard(message,"Last move has been undone. And vote count has been reset.");
          }
          else{
@@ -215,6 +279,7 @@ client.on('message', (message) => {
              movesCount.clear();
              userVoted.clear();
              var gameOver = isGameOver();
+             updateDataToFirebase();
              if(gameOver){
                return gameOverMessage(message);
              }
@@ -254,6 +319,7 @@ client.on('message', (message) => {
             movesCount.clear();
             userVoted.clear();
             var gameOver = isGameOver();
+            updateDataToFirebase();
             if(gameOver){
               return gameOverMessage(message);
             }
@@ -262,11 +328,12 @@ client.on('message', (message) => {
             }
           }
           else {
-            var randomInt = getRandomInt(solList.length);
+            var randomInt = getRandomInt(solList.length+1);
             chess.move(solList[randomInt])
             movesCount.clear();
             userVoted.clear();
             var gameOver = isGameOver();
+            updateDataToFirebase();
             if(gameOver){
               return gameOverMessage(message);
             }
@@ -292,6 +359,7 @@ client.on('message', (message) => {
              var validMove = isValidMove(move)
              if(validMove){
                var isCounted = countVote(message,move)
+               updateDataToFirebase();
                if(isCounted){
                  message.react("✅")
                }
@@ -313,6 +381,7 @@ client.on('message', (message) => {
              var validMove = isValidMove(move)
              if(validMove){
                var isCounted = countVote(message,move)
+               updateDataToFirebase();
                if(isCounted){
                  message.react("✅")
                }
