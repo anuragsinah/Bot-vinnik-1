@@ -328,7 +328,8 @@ client.on('message', (message) => {
             }
           }
           else {
-            var randomInt = getRandomInt(solList.length+1);
+            var randomInt = getRandomInt(solList.length);
+            console.log("randomInt",randomInt);
             chess.move(solList[randomInt])
             movesCount.clear();
             userVoted.clear();
