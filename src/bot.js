@@ -170,19 +170,19 @@ function isGameOver(){
 function gameOverMessage(message) {
   gameInProgress = false
   if(chess.in_checkmate()){
-    return sendMessageWithBoard(message,"Wow, it is a mate!!!!!!!!");
+    return sendMessageWithBoard(message,"**Wow, it's a mate!! 🏆**");
   }
   else if (chess.in_stalemate()) {
-    return sendMessageWithBoard(message,"Sorry, you have drawn the match by stalemate.");
+    return sendMessageWithBoard(message,"**Sorry, you have drawn the match by stalemate.**");
   }
   else if (chess.in_threefold_repetition()) {
-    return sendMessageWithBoard(message,"Match has been drawn by ThreefoldRepetition.");
+    return sendMessageWithBoard(message,"**Match has been drawn by ThreefoldRepetition.**");
   }
   else if (chess.insufficient_material()) {
-    return sendMessageWithBoard(message,"Match has been drawn by insufficientMaterial.");
+    return sendMessageWithBoard(message,"**Match has been drawn by insufficientMaterial.**");
   }
   else if (chess.inDraw()) {
-    return sendMessageWithBoard(message,"Match has been drawn.");
+    return sendMessageWithBoard(message,"**Match has been drawn.**");
   }
 }
 
