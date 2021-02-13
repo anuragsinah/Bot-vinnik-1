@@ -189,6 +189,7 @@ function gameOverMessage(message) {
 client.on('message', (message) => {
     if(message.author.bot){
        if(message.content === 'Are you sure you want to stop the game? React on this message with ✅ to continue.'){
+         message.react('✅')
           message.awaitReactions(reactionFilter, { max: 1, time: 60000, errors: ['time'] })
           .then(collected => {
             const reaction = collected.first();
