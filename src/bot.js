@@ -11,6 +11,12 @@ const chess = new Chess()
 
 var gameInProgress = false;
 
+var whitePlayersCount = 100;
+
+var blackPlayersCount = 100;
+
+var voteCount = 0;
+
 var serviceAccount = {
   "type": "service_account",
   "project_id": process.env.project_id,
@@ -54,6 +60,11 @@ async function getCollection(){
      userVoted = new Map(Object.entries(doc.data()['userVoted']))
      movesCount = new Map(Object.entries(doc.data()['movesCount']))
    }
+   else if (doc.id == 'voteCount') {
+     whitePlayersCount = doc.data()['whitePlayersCount']
+     blackPlayersCount = doc.data()['blackPlayersCount']
+     voteCount = doc.data()['voteCount']
+   }
  });
 }
 
@@ -65,13 +76,73 @@ async function updateDataToFirebase(){
     var obj = {pgn : chess.pgn()}
     console.log(obj);
     await db.collection('chessBot').doc('pgn').set(obj, { merge: true })
-    await db.collection('chessBot').doc('chess').set({ userVoted: userVotedObj, movesCount: movesCountObj }, { merge: true });
+    await db.collection('chessBot').doc('chess').set({ userVoted: userVotedObj, movesCount: movesCountObj }, { merge: true })
+    await db.collection('chessBot').doc('voteCount').set({ whitePlayersCount: whitePlayersCount, blackPlayersCount: blackPlayersCount, voteCount: voteCount }, { merge: true });
     console.log("updateDataToFirebase done");
   }
 	catch(err){
     console.error(err);
   }
 }
+
+async function moveAndReset(message){
+  try{
+    if(gameInProgress){
+       const sorted = new Map([...movesCount.entries()].sort((a, b) => b[1] - a[1]));
+       console.log("This is sorted " ,sorted);
+       const maxValue = sorted.values().next().value;
+       const solList = new Array();
+      // console.log("This is amaxxx " ,maxValue);
+       for (let [key, value] of sorted) {
+               if(value<maxValue)
+               break;
+               else
+               solList.push(key);
+           }
+       var valueSet = solList.map((item, i) => `${i + 1}. ${item} - ${maxValue} votes`).join("\n");
+       if (solList.length ==0){
+         message.channel.send("No voted moves present to be played");
+       }
+       else if (solList.length == 1 ) {
+         chess.move(solList[0])
+         movesCount.clear();
+         userVoted.clear();
+         voteCount = 0;
+         var gameOver = isGameOver();
+         updateDataToFirebase();
+         if(gameOver){
+           return gameOverMessage(message);
+         }
+         else{
+           return sendMessageWithBoard(message,solList[0] + " has been played."+'```'+valueSet+'```');
+         }
+       }
+       else {
+         var randomInt = getRandomInt(solList.length);
+         console.log("randomInt",randomInt);
+         chess.move(solList[randomInt])
+         movesCount.clear();
+         userVoted.clear();
+         voteCount = 0;
+         var gameOver = isGameOver();
+         updateDataToFirebase();
+         if(gameOver){
+           return gameOverMessage(message);
+         }
+         else{
+           return sendMessageWithBoard(message,solList[randomInt] + " has been played."+'```'+valueSet+'```');
+         }
+       }
+     }
+     else {
+       message.reply(gameNotInProgressMessage)
+     }
+  }
+	catch(err){
+    console.error(err);
+  }
+}
+
 
 const startGameMessage="hey, get started with the moves!";
 const stopGameMessage="The current game has been stopped by an Arbiter!";
@@ -168,21 +239,22 @@ function isGameOver(){
 }
 
 function gameOverMessage(message) {
-  gameInProgress = false
+  gameInProgress = false;
+  var gamePgnMessage = '\n```'+chess.pgn()+'```'+'\n You can analysis it here. https://lichess.org/analysis by pasting it to PGN'
   if(chess.in_checkmate()){
-    return sendMessageWithBoard(message,"**Wow, it's a mate!! 🏆**");
+    return sendMessageWithBoard(message,"**Wow, it's a mate!! 🏆**"+gamePgnMessage);
   }
   else if (chess.in_stalemate()) {
-    return sendMessageWithBoard(message,"**Sorry, you have drawn the match by stalemate.**");
+    return sendMessageWithBoard(message,"**Sorry, you have drawn the match by stalemate.**"+gamePgnMessage);
   }
   else if (chess.in_threefold_repetition()) {
-    return sendMessageWithBoard(message,"**Match has been drawn by ThreefoldRepetition.**");
+    return sendMessageWithBoard(message,"**Match has been drawn by ThreefoldRepetition.**"+gamePgnMessage);
   }
   else if (chess.insufficient_material()) {
-    return sendMessageWithBoard(message,"**Match has been drawn by insufficientMaterial.**");
+    return sendMessageWithBoard(message,"**Match has been drawn by insufficientMaterial.**"+gamePgnMessage);
   }
   else if (chess.inDraw()) {
-    return sendMessageWithBoard(message,"**Match has been drawn.**");
+    return sendMessageWithBoard(message,"**Match has been drawn.**"+gamePgnMessage);
   }
 }
 
@@ -198,6 +270,7 @@ client.on('message', (message) => {
                chess.reset()
                movesCount.clear();
                userVoted.clear();
+               voteCount = 0;
                gameInProgress = false;
                updateDataToFirebase();
                message.channel.send(stopGameMessage);
@@ -220,11 +293,28 @@ client.on('message', (message) => {
      args[0] = args[0].toLowerCase();
      console.log(args[0]);
      if(args[0] === 'c.startgame' || args[0] === 'c.sg'){
+       whitePlayersCount = 100
+       blackPlayersCount = 100
+       if (args[1]){
+         var playerCount =  parseInt(args[1], 10);
+         if(!isNaN(playerCount)){
+           console.log("playerCount",playerCount);
+           whitePlayersCount = playerCount;
+         }
+       }
+       if (args[2]){
+         var playerCount =  parseInt(args[2], 10);
+         if(playerCount != NaN){
+           blackPlayersCount = playerCount;
+         }
+       }
+       console.log( "whitePlayerCounts", whitePlayersCount,"blackPlayersCount", blackPlayersCount);
        if(isArbiter(message)){
          if(!gameInProgress){
            chess.reset()
            movesCount.clear();
            userVoted.clear();
+           voteCount = 0;
            gameInProgress = true;
            updateDataToFirebase();
            return sendMessageWithBoard(message,startGameMessage);
@@ -257,6 +347,7 @@ client.on('message', (message) => {
            chess.undo()
            movesCount.clear();
            userVoted.clear();
+           voteCount = 0;
            updateDataToFirebase();
            return sendMessageWithBoard(message,"Last move has been undone. And vote count has been reset.");
          }
@@ -279,6 +370,7 @@ client.on('message', (message) => {
            else{
              movesCount.clear();
              userVoted.clear();
+             voteCount = 0;
              var gameOver = isGameOver();
              updateDataToFirebase();
              if(gameOver){
@@ -299,54 +391,7 @@ client.on('message', (message) => {
      }
      else if (args[0] === 'c.stopvote' || args[0] === 'c.sv') {
        if(isArbiter(message)){
-       if(gameInProgress){
-          const sorted = new Map([...movesCount.entries()].sort((a, b) => b[1] - a[1]));
-          console.log("This is sorted " ,sorted);
-          const maxValue = sorted.values().next().value;
-          const solList = new Array();
-         // console.log("This is amaxxx " ,maxValue);
-          for (let [key, value] of sorted) {
-                  if(value<maxValue)
-                  break;
-                  else
-                  solList.push(key);
-              }
-          var valueSet = solList.map((item, i) => `${i + 1}. ${item} - ${maxValue} votes`).join("\n");
-          if (solList.length ==0){
-            message.channel.send("No voted moves present to be played");
-          }
-          else if (solList.length == 1 ) {
-            chess.move(solList[0])
-            movesCount.clear();
-            userVoted.clear();
-            var gameOver = isGameOver();
-            updateDataToFirebase();
-            if(gameOver){
-              return gameOverMessage(message);
-            }
-            else{
-              return sendMessageWithBoard(message,solList[0] + " has been played."+'```'+valueSet+'```');
-            }
-          }
-          else {
-            var randomInt = getRandomInt(solList.length);
-            console.log("randomInt",randomInt);
-            chess.move(solList[randomInt])
-            movesCount.clear();
-            userVoted.clear();
-            var gameOver = isGameOver();
-            updateDataToFirebase();
-            if(gameOver){
-              return gameOverMessage(message);
-            }
-            else{
-              return sendMessageWithBoard(message,solList[randomInt] + " has been played."+'```'+valueSet+'```');
-            }
-          }
-        }
-        else {
-          message.reply(gameNotInProgressMessage)
-        }
+         moveAndReset(message);
       }
       else{
         message.react("❌")
@@ -357,13 +402,17 @@ client.on('message', (message) => {
          var currentTurn = chess.turn()
          if(currentTurn === 'b'){
            if(isBlackTeam(message)){
-             move = args[1]
+             move = args[1];
              var validMove = isValidMove(move)
              if(validMove){
                var isCounted = countVote(message,move)
                updateDataToFirebase();
                if(isCounted){
+                 voteCount++;
                  message.react("✅")
+                 if(voteCount === blackPlayersCount){
+                   moveAndReset(message);
+                 }
                }
                else{
                  message.react("🚫")
@@ -385,7 +434,11 @@ client.on('message', (message) => {
                var isCounted = countVote(message,move)
                updateDataToFirebase();
                if(isCounted){
+                 voteCount++;
                  message.react("✅")
+                 if(voteCount === whitePlayersCount){
+                   moveAndReset(message);
+                 }
                }
                else{
                  message.react("🚫")
@@ -413,7 +466,8 @@ client.on('message', (message) => {
            message.reply("No moves has been made till now");
          }
          else{
-           message.channel.send('\n```'+chess.pgn()+'```'+'\n You can analysis it here. https://lichess.org/analysis by pasting it to PGN');
+           playesCountMessage  = '\n ```White Players - ' + whitePlayersCount + '\nBlack Players - '+ blackPlayersCount +'```'
+           message.channel.send(playesCountMessage + '\n```'+chess.pgn()+'```'+'\n You can analysis it here. https://lichess.org/analysis by pasting it to PGN');
          }
        }
        else{
